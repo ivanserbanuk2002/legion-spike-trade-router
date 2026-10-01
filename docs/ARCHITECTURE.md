@@ -11,19 +11,19 @@ This RFC records a provisional decision, not a production-readiness claim.
 
 ## Boundaries
 
-- `app/main.py` composes the application and registers routers.
+- `app/main.py` creates each app with an injected or fresh in-memory store.
 - `app/api/v1/payments.py` owns request validation and HTTP responses.
-- The request requires `amount: float` and `currency: str`.
+- `app/schemas/payment.py` validates a finite positive amount and trimmed nonempty currency.
 - `app/models/payment.py` owns the four-column relational representation.
 - Its columns are `id`, `amount`, `currency`, and `status`.
-- The model is transient: no engine, session, or database write is configured.
-- `app/core/` is the location for small framework-independent helpers.
+- `app/core/payments.py` holds transient models under a lock and returns immutable snapshots.
+- No engine, session, or database write is configured. App instances do not share state.
 - `/health` remains a liveness endpoint with no external dependency checks.
 - The companion event-bus spike is separate and is not wired into this API.
 
 Future domain rules must remain independent of HTTP and venue adapters.
 The current float field follows the spike contract; money precision is undecided.
-Currency validation, persistence, and request ownership are not implemented.
+Currency identity validation, durable persistence, and request ownership are not implemented.
 No component currently guarantees idempotency or durable acknowledgement.
 
 ## Data flow
@@ -31,11 +31,17 @@ No component currently guarantees idempotency or durable acknowledgement.
 1. A client sends JSON to `POST /api/v1/payments`.
 2. FastAPI and Pydantic validate the required fields and their types.
 3. Invalid input returns HTTP 422 before the handler creates an identifier.
-4. The handler creates a UUID and a transient `Payment` with status `pending`.
+4. The store creates a UUID and keeps a transient `Payment` with status `pending`.
 5. The API returns HTTP 201 with only `id` and `status`.
-6. No payment is persisted and no event is emitted after the response.
+6. `GET /api/v1/payments/{id}` reads all four fields, or returns 404 for a missing UUID.
+7. Restarting the process loses all records; no event is emitted.
 
-The tests cover a valid response and a malformed amount; health has its own test.
+Validation errors expose only type, location, and message, so raw nonfinite input
+cannot break JSON error serialization. Currency case is preserved, not validated
+against an external currency list. Malformed UUID paths return HTTP 422.
+
+The tests cover creation, retrieval, missing records, input validation, app isolation,
+and the original health contract.
 CI runs Ruff and pytest on pushes and pull requests using Python 3.12.
 These checks cover the spike contract, not failure recovery or load capacity.
 

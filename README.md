@@ -6,7 +6,7 @@
 
 Technical spike for the architecture of a trade-routing microservice using
 Python 3.12, FastAPI, SQLAlchemy, and Docker. This repository contains a service
-scaffold and a minimal payments creation example. It has no trading rules,
+scaffold and an in-memory payments example. It has no trading rules,
 exchange integrations, credentials, order execution, or database connections.
 
 | Method | Path | Response |
@@ -14,11 +14,15 @@ exchange integrations, credentials, order execution, or database connections.
 | GET | `/health` | `{"status": "ok"}` |
 | POST | `/api/v1/stub` | `{"status": "scaffold"}` |
 | POST | `/api/v1/payments` | `{"id": "<uuid>", "status": "pending"}` |
+| GET | `/api/v1/payments/{id}` | Payment `id`, `amount`, `currency`, and `status` |
 
 The stub accepts an empty request body and has no side effects.
 The payments endpoint accepts `{"amount": 10.5, "currency": "USD"}` and returns
-HTTP 201; malformed field types return HTTP 422. It creates a transient model
-instance only: no payment is persisted, executed, or published as an event.
+HTTP 201. Amount must be finite and greater than zero; currency must be a
+nonempty string after trimming whitespace. Invalid input returns HTTP 422.
+GET returns HTTP 404 for an unknown UUID (422 for a malformed UUID).
+Records are kept only in application memory and disappear on restart. Each app
+instance/worker has its own store; no payment is executed or published as an event.
 
 ## Getting started
 
@@ -50,7 +54,7 @@ curl -X POST http://127.0.0.1:8000/api/v1/stub
 
 On Windows, use `curl.exe` if `curl` is a PowerShell alias.
 
-Run the tests (one health test and two payments tests):
+Run the offline tests:
 
 ```powershell
 .\.venv\Scripts\python.exe -m pytest
@@ -81,9 +85,9 @@ above do not read `.env`. Stop Compose with `docker compose down`.
 app/
   main.py          FastAPI application and router registration
   api/             HTTP endpoints
-  core/            Shared UUID generation helper
+  core/            UUID helper and lock-protected in-memory payment store
   models/          Four-field SQLAlchemy Payment model
-  schemas/         Reserved for request and response schemas
+  schemas/         Typed payment requests and responses
 alembic/           Reserved for migration configuration and revisions
 tests/             Health and payments endpoint tests
 docker/            Reserved for container support files
@@ -94,11 +98,13 @@ docker-compose.yml Local API service
 The application entry point registers a small HTTP router. `/health` reports
 process liveness only; it does not check external dependencies. The Payment
 model maps `id`, `amount`, `currency`, and `status`. There is no engine, session,
-database service, or migration environment. Alembic and schema directories
-remain reserved placeholders.
+database service, or migration environment. SQLAlchemy instances stay in a
+lock-protected store; callers receive immutable snapshots. `create_app(store=None)`
+creates isolated app state and optionally accepts an existing store for composition.
+Alembic remains a reserved placeholder.
 
 The intended boundary keeps domain decisions separate from HTTP handlers,
-persistence, and venue adapters. The spike does not implement persistence or
+persistence, and venue adapters. The spike does not implement durable persistence or
 venue adapters, or establish suitability for real trading.
 
 Dependencies use version ranges rather than a lockfile. Docker configuration
@@ -110,10 +116,18 @@ is provided; no image build or deployment has been performed for this spike.
 - Which persistence backend and transaction boundaries fit the service?
 - What should define request ownership and idempotency at the API boundary?
 
+## Design references
+
+- Mikko Ohtamaa's [finite-value and strict-JSON boundary work](https://github.com/tradingstrategy-ai/web3-ethereum-defi/commit/382dbe6623bc79a6ed350139d3750ef75c09eb0b)
+  inspired rejecting nonfinite amounts and returning JSON-safe validation errors.
+- Nader Dabit's [typed payload/status and injected dispatch work](https://github.com/dabit3/a2a-x402-typescript/commit/43d7294c4fc489d574b579d3ed2f856ebefa5f3f)
+  inspired typed responses and explicit store injection. These are design references,
+  not copied implementations or integrations with either project.
+
 ## Status
 
-✅ Spike complete — architecture validated, ready for feature build
+In-memory API example with offline contract tests; not production-ready.
 
-Validation is limited to the example HTTP contract, model mapping, and
-lint/test tooling. Persistence, payment execution, precise money handling,
+Validation is limited to the example HTTP contract, in-memory behavior, and
+lint/test tooling. Durable persistence, payment execution, precise money handling,
 and cross-service event delivery remain unvalidated.
