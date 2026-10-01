@@ -18,6 +18,10 @@ class PaymentSnapshot:
     status: PaymentStatus
 
 
+class IdempotencyConflict(ValueError):
+    pass
+
+
 def _snapshot(payment: Payment) -> PaymentSnapshot:
     return PaymentSnapshot(payment.id, payment.amount, payment.currency, payment.status)
 
@@ -27,15 +31,25 @@ class InMemoryPaymentStore:
 
     def __init__(self) -> None:
         self._payments: dict[UUID, Payment] = {}
+        self._keys: dict[str, UUID] = {}
         self._lock = Lock()
 
-    def create(self, amount: float, currency: str) -> PaymentSnapshot:
+    def create(
+        self, amount: float, currency: str, key: str | None = None
+    ) -> tuple[PaymentSnapshot, bool]:
         with self._lock:
+            if key is not None and key in self._keys:
+                existing = self._payments[self._keys[key]]
+                if (existing.amount, existing.currency) != (amount, currency):
+                    raise IdempotencyConflict("Key already used for a different payment")
+                return _snapshot(existing), False
             payment = Payment(
                 id=generate_id(), amount=amount, currency=currency, status="pending"
             )
             self._payments[payment.id] = payment
-            return _snapshot(payment)
+            if key is not None:
+                self._keys[key] = payment.id
+            return _snapshot(payment), True
 
     def get(self, payment_id: UUID) -> PaymentSnapshot | None:
         with self._lock:

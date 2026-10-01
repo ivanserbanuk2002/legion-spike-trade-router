@@ -24,7 +24,7 @@ This RFC records a provisional decision, not a production-readiness claim.
 Future domain rules must remain independent of HTTP and venue adapters.
 The current float field follows the spike contract; money precision is undecided.
 Currency identity validation, durable persistence, and request ownership are not implemented.
-No component currently guarantees idempotency or durable acknowledgement.
+Optional idempotency works only inside one store; durable acknowledgement is absent.
 
 ## Data flow
 
@@ -47,11 +47,21 @@ same store lock. Repeated cancellation is a successful no-op returning the full
 cancelled record with HTTP 200. Unknown UUIDs return 404. Records retain their
 original insertion order, amount, and currency. No external cancellation occurs.
 
+An optional `Idempotency-Key` on creation is an exact, case-sensitive string with
+1–128 characters and at least one non-whitespace character. The store atomically
+looks up the key, compares normalized amount/currency, and inserts only on a miss.
+A matching retry returns HTTP 200 with the original ID and current status; a
+conflicting retry returns HTTP 409. Cancellation never releases a key. Amounts
+use the existing float contract and currencies are trimmed but case-sensitive.
+Keys are neither account-scoped nor durable, expire only with the store, and have
+no eviction or retention cap. Multi-worker idempotency requires a shared backend.
+
 Validation errors expose only type, location, and message, so raw nonfinite input
 cannot break JSON error serialization. Currency case is preserved, not validated
 against an external currency list. Malformed UUID paths return HTTP 422.
 
-The tests cover creation, retrieval, pagination, cancellation, missing records, input validation, app isolation,
+The tests cover creation, retrieval, pagination, cancellation, idempotent replay,
+conflicts, concurrent retries, missing records, input validation, app isolation,
 and the original health contract.
 CI runs Ruff and pytest on pushes and pull requests using Python 3.12.
 These checks cover the spike contract, not failure recovery or load capacity.
@@ -67,4 +77,4 @@ The trade-off is coupling the HTTP layer to FastAPI and Pydantic conventions.
 SQLAlchemy remains outside the route framework; its storage lifecycle is deferred.
 Revisit the decision if the service needs a different execution or integration model.
 
-Status: draft, review scheduled next sprint
+Status: provisional; no production deployment.

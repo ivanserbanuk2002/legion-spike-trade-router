@@ -34,6 +34,15 @@ Cancellation changes `pending` to `cancelled` and returns HTTP 200. Repeating it
 returns the same cancelled record. Missing UUIDs return HTTP 404. This is only a
 local state change; it does not cancel anything at a payment provider or exchange.
 
+Create optionally accepts `Idempotency-Key` (1–128 characters, not whitespace-only).
+Keys are case-sensitive and compared exactly. A repeated key with the same amount
+after float conversion and the same trimmed currency returns HTTP 200 with the
+existing `id` and **current** status, including `cancelled`. A different normalized
+payload returns HTTP 409 without changing the original record. Without a key, each
+request creates a new payment. Key lookup and insertion share one lock, including
+concurrent requests. Keys last until the store is discarded, with no expiry or
+eviction; this is process-local behavior, not durable or account-scoped protection.
+
 ## Getting started
 
 Use Python 3.12. From the repository root, create a virtual environment.
@@ -124,7 +133,7 @@ is provided; no image build or deployment has been performed for this spike.
 
 - What instrument identity and quantity units belong in the domain model?
 - Which persistence backend and transaction boundaries fit the service?
-- What should define request ownership and idempotency at the API boundary?
+- What should define ownership and durable, account-scoped idempotency?
 
 ## Design references
 
@@ -134,10 +143,13 @@ is provided; no image build or deployment has been performed for this spike.
   inspired typed responses and explicit store injection. These are design references,
   not copied implementations or integrations with either project.
 
+Payment idempotency is a local addition; the references do not establish its behavior.
+
 ## Status
 
 In-memory API example with offline contract tests; not production-ready.
 
 Validation is limited to the example HTTP contract, in-memory behavior, and
 lint/test tooling. Durable persistence, payment execution, precise money handling,
-and cross-service event delivery remain unvalidated.
+and cross-service event delivery remain unvalidated. Records and keys grow in memory
+without a retention limit; this example has no authentication or account isolation.
