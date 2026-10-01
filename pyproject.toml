@@ -9,6 +9,7 @@ description = "Minimal architecture spike for a trade-routing microservice."
 requires-python = ">=3.12,<3.13"
 dependencies = [
     "fastapi>=0.115,<1",
+    "pydantic>=2.9,<3",
     "uvicorn>=0.30,<1",
     "sqlalchemy>=2.0,<3",
     "alembic>=1.13,<2",
