@@ -2,6 +2,8 @@
 
 ## Overview
 
+📐 [Architecture](docs/ARCHITECTURE.md)
+
 Technical spike for the architecture of a trade-routing microservice using
 Python 3.12, FastAPI, SQLAlchemy, and Docker. This repository contains only a
 service scaffold. It has no trading rules, exchange integrations, credentials,
