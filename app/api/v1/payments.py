@@ -37,3 +37,11 @@ def list_payments(
     offset: Annotated[int, Query(ge=0, le=1_000_000)] = 0,
 ) -> list[PaymentDetails]:
     return [PaymentDetails.model_validate(item) for item in store.list(status, limit, offset)]
+
+
+@router.post("/api/v1/payments/{payment_id}/cancel", response_model=PaymentDetails)
+def cancel_payment(payment_id: UUID, store: Store) -> PaymentDetails:
+    payment = store.cancel(payment_id)
+    if payment is None:
+        raise HTTPException(status_code=404, detail="Payment not found")
+    return PaymentDetails.model_validate(payment)

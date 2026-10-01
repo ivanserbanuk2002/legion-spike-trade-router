@@ -16,6 +16,7 @@ exchange integrations, credentials, order execution, or database connections.
 | POST | `/api/v1/payments` | `{"id": "<uuid>", "status": "pending"}` |
 | GET | `/api/v1/payments/{id}` | Payment `id`, `amount`, `currency`, and `status` |
 | GET | `/api/v1/payments` | Array of payments in creation order |
+| POST | `/api/v1/payments/{id}/cancel` | Full payment with status `cancelled` |
 
 The stub accepts an empty request body and has no side effects.
 The payments endpoint accepts `{"amount": 10.5, "currency": "USD"}` and returns
@@ -28,6 +29,10 @@ instance/worker has its own store; no payment is executed or published as an eve
 The collection accepts `status=pending|cancelled`, `limit` (1–100, default 50),
 and `offset` (0–1,000,000, default 0). Filtering happens before pagination.
 Empty pages return `[]`; invalid query parameters return HTTP 422.
+
+Cancellation changes `pending` to `cancelled` and returns HTTP 200. Repeating it
+returns the same cancelled record. Missing UUIDs return HTTP 404. This is only a
+local state change; it does not cancel anything at a payment provider or exchange.
 
 ## Getting started
 

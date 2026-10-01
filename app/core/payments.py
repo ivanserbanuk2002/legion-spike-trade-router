@@ -51,3 +51,12 @@ class InMemoryPaymentStore:
                 if status is None or payment.status == status
             )
             return [_snapshot(payment) for payment in islice(matches, offset, offset + limit)]
+
+    def cancel(self, payment_id: UUID) -> PaymentSnapshot | None:
+        with self._lock:
+            payment = self._payments.get(payment_id)
+            if payment is None:
+                return None
+            if payment.status == "pending":
+                payment.status = "cancelled"
+            return _snapshot(payment)

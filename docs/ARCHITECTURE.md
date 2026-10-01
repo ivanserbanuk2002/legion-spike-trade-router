@@ -42,11 +42,16 @@ the HTTP boundary accepts offsets through 1,000,000 and limits from 1 to 100.
 The store takes each page under its lock, copying only the selected records.
 Pages across separate requests are not a transactional snapshot.
 
+`POST /api/v1/payments/{id}/cancel` changes `pending` to `cancelled` under the
+same store lock. Repeated cancellation is a successful no-op returning the full
+cancelled record with HTTP 200. Unknown UUIDs return 404. Records retain their
+original insertion order, amount, and currency. No external cancellation occurs.
+
 Validation errors expose only type, location, and message, so raw nonfinite input
 cannot break JSON error serialization. Currency case is preserved, not validated
 against an external currency list. Malformed UUID paths return HTTP 422.
 
-The tests cover creation, retrieval, pagination, missing records, input validation, app isolation,
+The tests cover creation, retrieval, pagination, cancellation, missing records, input validation, app isolation,
 and the original health contract.
 CI runs Ruff and pytest on pushes and pull requests using Python 3.12.
 These checks cover the spike contract, not failure recovery or load capacity.
