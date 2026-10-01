@@ -1,4 +1,5 @@
 from dataclasses import dataclass
+from itertools import islice
 from threading import Lock
 from typing import Literal
 from uuid import UUID
@@ -40,3 +41,13 @@ class InMemoryPaymentStore:
         with self._lock:
             payment = self._payments.get(payment_id)
             return _snapshot(payment) if payment is not None else None
+
+    def list(
+        self, status: PaymentStatus | None, limit: int, offset: int
+    ) -> list[PaymentSnapshot]:
+        with self._lock:
+            matches = (
+                payment for payment in self._payments.values()
+                if status is None or payment.status == status
+            )
+            return [_snapshot(payment) for payment in islice(matches, offset, offset + limit)]

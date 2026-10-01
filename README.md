@@ -15,6 +15,7 @@ exchange integrations, credentials, order execution, or database connections.
 | POST | `/api/v1/stub` | `{"status": "scaffold"}` |
 | POST | `/api/v1/payments` | `{"id": "<uuid>", "status": "pending"}` |
 | GET | `/api/v1/payments/{id}` | Payment `id`, `amount`, `currency`, and `status` |
+| GET | `/api/v1/payments` | Array of payments in creation order |
 
 The stub accepts an empty request body and has no side effects.
 The payments endpoint accepts `{"amount": 10.5, "currency": "USD"}` and returns
@@ -23,6 +24,10 @@ nonempty string after trimming whitespace. Invalid input returns HTTP 422.
 GET returns HTTP 404 for an unknown UUID (422 for a malformed UUID).
 Records are kept only in application memory and disappear on restart. Each app
 instance/worker has its own store; no payment is executed or published as an event.
+
+The collection accepts `status=pending|cancelled`, `limit` (1–100, default 50),
+and `offset` (0–1,000,000, default 0). Filtering happens before pagination.
+Empty pages return `[]`; invalid query parameters return HTTP 422.
 
 ## Getting started
 

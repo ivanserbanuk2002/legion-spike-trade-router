@@ -36,11 +36,17 @@ No component currently guarantees idempotency or durable acknowledgement.
 6. `GET /api/v1/payments/{id}` reads all four fields, or returns 404 for a missing UUID.
 7. Restarting the process loses all records; no event is emitted.
 
+`GET /api/v1/payments` returns an array in insertion order. An optional status
+filter runs before offset/limit pagination. Defaults are offset 0 and limit 50;
+the HTTP boundary accepts offsets through 1,000,000 and limits from 1 to 100.
+The store takes each page under its lock, copying only the selected records.
+Pages across separate requests are not a transactional snapshot.
+
 Validation errors expose only type, location, and message, so raw nonfinite input
 cannot break JSON error serialization. Currency case is preserved, not validated
 against an external currency list. Malformed UUID paths return HTTP 422.
 
-The tests cover creation, retrieval, missing records, input validation, app isolation,
+The tests cover creation, retrieval, pagination, missing records, input validation, app isolation,
 and the original health contract.
 CI runs Ruff and pytest on pushes and pull requests using Python 3.12.
 These checks cover the spike contract, not failure recovery or load capacity.
