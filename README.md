@@ -153,3 +153,6 @@ Validation is limited to the example HTTP contract, in-memory behavior, and
 lint/test tooling. Durable persistence, payment execution, precise money handling,
 and cross-service event delivery remain unvalidated. Records and keys grow in memory
 without a retention limit; this example has no authentication or account isolation.
+
+`GET /api/v1/payments?currency=USD` adds an exact, case-sensitive currency
+filter before pagination. Whitespace is trimmed; blank filters return 422.

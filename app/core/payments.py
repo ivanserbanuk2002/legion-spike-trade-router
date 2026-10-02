@@ -57,12 +57,14 @@ class InMemoryPaymentStore:
             return _snapshot(payment) if payment is not None else None
 
     def list(
-        self, status: PaymentStatus | None, limit: int, offset: int
+        self, status: PaymentStatus | None, limit: int, offset: int,
+        currency: str | None = None
     ) -> list[PaymentSnapshot]:
         with self._lock:
             matches = (
                 payment for payment in self._payments.values()
-                if status is None or payment.status == status
+                if (status is None or payment.status == status)
+                and (currency is None or payment.currency == currency)
             )
             return [_snapshot(payment) for payment in islice(matches, offset, offset + limit)]
 
