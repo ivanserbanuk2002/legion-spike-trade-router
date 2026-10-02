@@ -76,3 +76,12 @@ class InMemoryPaymentStore:
             if payment.status == "pending":
                 payment.status = "cancelled"
             return _snapshot(payment)
+
+
+    def counts(self) -> dict[str, dict[str, int]]:
+        with self._lock:
+            counts: dict[str, dict[str, int]] = {}
+            for payment in self._payments.values():
+                group = counts.setdefault(payment.currency, {"pending": 0, "cancelled": 0})
+                group[payment.status] += 1
+            return counts

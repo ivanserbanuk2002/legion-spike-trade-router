@@ -156,3 +156,6 @@ without a retention limit; this example has no authentication or account isolati
 
 `GET /api/v1/payments?currency=USD` adds an exact, case-sensitive currency
 filter before pagination. Whitespace is trimmed; blank filters return 422.
+
+`GET /api/v1/payment-reports/counts` returns current pending/cancelled counts
+per currency from one locked snapshot. An empty store returns `{}`.

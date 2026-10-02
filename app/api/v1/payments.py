@@ -64,3 +64,8 @@ def cancel_payment(payment_id: UUID, store: Store) -> PaymentDetails:
     if payment is None:
         raise HTTPException(status_code=404, detail="Payment not found")
     return PaymentDetails.model_validate(payment)
+
+
+@router.get("/api/v1/payment-reports/counts", response_model=dict[str, dict[str, int]])
+def payment_counts(store: Store) -> dict[str, dict[str, int]]:
+    return store.counts()
