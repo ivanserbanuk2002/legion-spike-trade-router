@@ -159,3 +159,7 @@ filter before pagination. Whitespace is trimmed; blank filters return 422.
 
 `GET /api/v1/payment-reports/counts` returns current pending/cancelled counts
 per currency from one locked snapshot. An empty store returns `{}`.
+
+`DELETE /api/v1/payments/cancelled` purges cancelled examples and their
+idempotency keys atomically, returning `{"removed": N}`. Pending records remain.
+A purged key can create a new payment; this explicit reset lasts only in this process.

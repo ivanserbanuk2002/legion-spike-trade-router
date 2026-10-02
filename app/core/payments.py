@@ -85,3 +85,14 @@ class InMemoryPaymentStore:
                 group = counts.setdefault(payment.currency, {"pending": 0, "cancelled": 0})
                 group[payment.status] += 1
             return counts
+
+
+    def purge_cancelled(self) -> int:
+        with self._lock:
+            removed = {key for key, value in self._payments.items()
+                       if value.status == "cancelled"}
+            self._keys = {key: value for key, value in self._keys.items()
+                          if value not in removed}
+            for payment_id in removed:
+                del self._payments[payment_id]
+            return len(removed)

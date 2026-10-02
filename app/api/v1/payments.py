@@ -69,3 +69,8 @@ def cancel_payment(payment_id: UUID, store: Store) -> PaymentDetails:
 @router.get("/api/v1/payment-reports/counts", response_model=dict[str, dict[str, int]])
 def payment_counts(store: Store) -> dict[str, dict[str, int]]:
     return store.counts()
+
+
+@router.delete("/api/v1/payments/cancelled", response_model=dict[str, int])
+def purge_cancelled_payments(store: Store) -> dict[str, int]:
+    return {"removed": store.purge_cancelled()}

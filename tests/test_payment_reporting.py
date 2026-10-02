@@ -25,3 +25,19 @@ def test_counts_group_by_currency_and_current_status():
             "EUR": {"pending": 1, "cancelled": 0},
         }
         assert len(client.get("/api/v1/payments").json()) == 3
+
+
+def test_purge_removes_only_cancelled_records_and_releases_their_keys():
+    with TestClient(create_app()) as client:
+        data = {"amount": 2, "currency": "USD"}
+        headers = {"Idempotency-Key": "reusable-after-purge"}
+        cancelled = client.post("/api/v1/payments", json=data, headers=headers).json()["id"]
+        pending = client.post("/api/v1/payments", json=data).json()["id"]
+        client.post(f"/api/v1/payments/{cancelled}/cancel")
+        response = client.delete("/api/v1/payments/cancelled")
+        assert response.status_code == 200 and response.json() == {"removed": 1}
+        assert client.get(f"/api/v1/payments/{cancelled}").status_code == 404
+        assert client.get(f"/api/v1/payments/{pending}").status_code == 200
+        assert client.delete("/api/v1/payments/cancelled").json() == {"removed": 0}
+        recreated = client.post("/api/v1/payments", json=data, headers=headers)
+        assert recreated.status_code == 201 and recreated.json()["id"] != cancelled
